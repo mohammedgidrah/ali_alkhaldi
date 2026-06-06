@@ -391,6 +391,10 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
     <div class="header-actions">
       <button class="btn btn-primary" onclick="openAddModal()">➕ إضافة عضو</button>
       <button class="btn btn-outline" onclick="logout()" style="padding:9px 12px">🚪</button>
+      <button class="btn"
+        onclick="resetAllPoints()">
+  🔄 تصفير النقاط
+</button>
     </div>
   </header>
 
@@ -434,7 +438,16 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>الاسم</th><th>الدوريات</th><th>المناوبات</th><th>نقاط الفترة</th><th>التقييم</th><th>الإجراءات</th></tr></thead>
+<thead><tr>
+<th>#</th>
+<th>الاسم</th>
+<th>الدوريات</th>
+<th>المناوبات</th>
+<th>المخالفات</th>
+<th>نقاط الفترة</th>
+<th>التقييم</th>
+<th>الإجراءات</th>
+</tr></thead>
         <tbody id="table-body"></tbody>
       </table>
       <div id="empty-state" class="empty-state" style="display:none"><div class="empty-icon">📭</div><div>لا يوجد أعضاء بعد</div></div>
@@ -520,7 +533,35 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
 </div>
 
 <div id="toast"></div>
+<!-- ⚠️ CUSTOM WARNING MODAL -->
+<div class="modal-bg" id="reset-modal">
+  <div class="modal confirm-modal">
 
+    <div class="confirm-icon">⚠️</div>
+
+    <h3>تأكيد إعادة التصفير</h3>
+
+    <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">
+      سيتم حذف <span style="color:var(--danger); font-weight:700;">جميع النقاط والمخالفات</span><br>
+      لكل الأعضاء بشكل نهائي.
+    </p>
+
+    <p style="margin-top:10px; font-size:0.8rem; color:var(--muted);">
+      هذا الإجراء لا يمكن التراجع عنه.
+    </p>
+
+    <div class="confirm-btns">
+      <button class="btn btn-outline" onclick="closeModal('reset-modal')">
+        إلغاء
+      </button>
+
+      <button class="btn btn-confirm-del" onclick="confirmReset()">
+        نعم، تصفير الكل
+      </button>
+    </div>
+
+  </div>
+</div>
 <script>
 const PASSWORD    = 'Lion';
 const STORAGE_KEY = 'dashboard_data_v5';
@@ -533,8 +574,9 @@ let editingHistoryEntryId = null;
 
 const DAWRIYAS = ['دورية خارجية'];
 const MANAWBAT = [
-  { label: 'مناوبة طابق 0',          noCooldown: true },
+  { label: 'مناوبة طابق 0', noCooldown: true },
   { label: 'مناوبة البوابة الأمامية', noCooldown: true },
+  { label: ' 0 استخدام السيارات الشخصية في ط', noCooldown: true }
 ];
 
 const DAY_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -582,6 +624,10 @@ function loadData() {
   if (raw) {
     try {
       members = JSON.parse(raw);
+      members.forEach(m => {
+  if (m.violations == null) m.violations = 0;
+  if (!m.history) m.history = [];
+});
     } catch (e) {
       console.error(e);
       members = [];
@@ -680,13 +726,20 @@ function renderTable() {
         <td><strong>${escHtml(m.name)}</strong></td>
         <td><span class="count-badge">${m._d} × دورية</span></td>
         <td><span class="count-badge">${m._m} × مناوبة</span></td>
-        <td><span class="pts-badge">${m._pts} نقطة</span></td>
+        <td>
+  <span class="count-badge">
+    ${m.violations || 0} مخالفة
+  </span>
+</td>
         <td><span class="grade-badge grade-${m._g}">${m._g}</span></td>
         <td>
           <div class="action-btns">
             <button class="btn-icon" title="تسجيل نشاط" onclick="openPointsModal('${m.id}')">⭐</button>
             <button class="btn-icon" title="تعديل"       onclick="openEditModal('${m.id}')">✏️</button>
             <button class="btn-icon btn-del" title="حذف" onclick="deleteMember('${m.id}')">🗑️</button>
+            <button class="btn-icon"
+        title="إضافة مخالفة"
+        onclick="addViolation('${m.id}')">⚠️</button>
           </div>
         </td>
       </tr>`).join('');
@@ -722,7 +775,12 @@ function saveMember() {
     if (m) m.name = name;
     showToast('تم التعديل', 'success');
   } else {
-    members.push({ id: generateId(), name, history: [] });
+members.push({
+  id: generateId(),
+  name,
+  history: [],
+  violations: 0
+});
     showToast('تمت الإضافة', 'success');
   }
   saveData();
@@ -892,6 +950,54 @@ function showToast(msg, type = 'success') {
   t.textContent = msg;
   t.className   = `show ${type}`;
   setTimeout(() => t.className = '', 2600);
+}
+function addViolation(id) {
+  const member = members.find(m => m.id === id);
+
+  if (!member) return;
+
+  member.violations = (member.violations || 0) + 1;
+
+  saveData();
+  renderTable();
+
+  showToast('تم تسجيل مخالفة ⚠️', 'error');
+}
+function resetAllPoints() {
+  openModal('reset-modal');
+}
+// function resetAllPoints() {
+  
+//   const ok = confirm(
+//     '⚠️ تحذير!\n\nسيتم حذف جميع النقاط + المخالفات لجميع الأعضاء.\nلا يمكن التراجع عن هذه العملية.\n\nهل تريد المتابعة؟'
+//   );
+
+//   if (!ok) return;
+
+//   members.forEach(member => {
+//     member.history = [];
+
+//     // FORCE reset violations safely
+//     member.violations = 0;
+//   });
+
+//   saveData();
+//   renderTable();
+
+//   showToast('تم تصفير النقاط والمخالفات بنجاح 🔄', 'success');
+// }
+function confirmReset() {
+  members.forEach(m => {
+    m.history = [];
+    m.violations = 0;
+  });
+
+  saveData();
+  renderTable();
+
+  closeModal('reset-modal');
+
+  showToast('تم تصفير النقاط والمخالفات بنجاح 🔄', 'success');
 }
 loadData();
 </script>
