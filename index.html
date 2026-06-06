@@ -576,7 +576,24 @@ function getGrade(pts) {
   if (pts >= 10)  return 'B';
   return 'C';
 }
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
 
+  if (raw) {
+    try {
+      members = JSON.parse(raw);
+    } catch (e) {
+      console.error(e);
+      members = [];
+    }
+  } else {
+    members = [];
+  }
+
+  renderTable();
+
+  showToast('تم تحميل البيانات المحفوظة', 'success');
+}
 function doLogin() {
   if (document.getElementById('pw-input').value === PASSWORD) {
     document.getElementById('login-screen').style.display = 'none';
@@ -595,10 +612,13 @@ function logout() {
   document.getElementById('login-err').style.display = 'none';
 }
 
-function loadData() {
-renderTable();
- 
-  showToast('تم تحميل البيانات المحفوظة', 'success');
+function saveData() {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(members)
+  );
+
+  console.log('Saved:', members);
 }
 
 function saveData() {
@@ -873,6 +893,7 @@ function showToast(msg, type = 'success') {
   t.className   = `show ${type}`;
   setTimeout(() => t.className = '', 2600);
 }
+loadData();
 </script>
 </body>
 </html>
