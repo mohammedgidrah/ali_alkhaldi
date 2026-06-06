@@ -479,6 +479,8 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
     <div class="action-list" id="dawriya-list"></div>
     <div class="section-title">المناوبات — +2 نقاط للمناوبة</div>
     <div class="action-list" id="manawba-list"></div>
+    <div class="section-title"> 4+ إجراءات خاصة</div>
+<div class="action-list" id="special-action"></div>
     <div class="form-group">
       <label class="form-label">نقاط مخصصة إضافية</label>
       <input type="number" class="form-input" id="custom-pts" placeholder="0" min="0">
@@ -574,11 +576,13 @@ let editingHistoryEntryId = null;
 
 const DAWRIYAS = ['دورية خارجية'];
 const MANAWBAT = [
-  { label: 'مناوبة طابق 0', noCooldown: true },
-  { label: 'مناوبة البوابة الأمامية', noCooldown: true },
-  { label: ' 0 استخدام السيارات الشخصية في ط', noCooldown: true }
+  { label: 'مناوبة طابق 0', noCooldown: true, pts: 2 },
+  { label: 'مناوبة البوابة الأمامية', noCooldown: true, pts: 2 },
 ];
-
+const SPECIAL_ACTION = {
+  label: 'استخراج السيارات في طابق 0',
+  pts: 4
+};
 const DAY_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
  
@@ -817,12 +821,24 @@ function openPointsModal(id) {
      </div>`
   ).join('');
 
-  document.getElementById('manawba-list').innerHTML = MANAWBAT.map(mn =>
-    `<div class="action-item" onclick="addActivity('manawba', '${mn.label.replace(/'/g,"\\'")}', 2)">
-       <span>${mn.label}${mn.noCooldown ? '<span class="no-cooldown-tag">بلا تهدئة</span>' : ''}</span>
-       <span class="action-pts">+2</span>
-     </div>`
-  ).join('');
+document.getElementById('manawba-list').innerHTML = MANAWBAT.map(mn =>
+  `<div class="action-item"
+        onclick="addActivity('manawba', '${mn.label.replace(/'/g,"\\'")}', ${mn.pts})">
+     <span>
+       ${mn.label}
+       ${mn.noCooldown ? '<span class="no-cooldown-tag">بلا تهدئة</span>' : ''}
+     </span>
+     <span class="action-pts">+${mn.pts}</span>
+   </div>`
+).join('');
+document.getElementById('special-action').innerHTML = `
+  <div class="action-item"
+       onclick="addActivity('manawba', '${SPECIAL_ACTION.label.replace(/'/g,"\\'")}', ${SPECIAL_ACTION.pts})">
+    <span>${SPECIAL_ACTION.label}</span>
+    <span class="action-pts">+${SPECIAL_ACTION.pts}</span>
+  </div>
+`;
+  
 
   document.getElementById('custom-pts').value = '';
   document.getElementById('pts-note').value   = '';
