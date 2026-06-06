@@ -596,10 +596,7 @@ function logout() {
 }
 
 function loadData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    try { members = JSON.parse(raw); } catch { members = []; }
-  }
+renderTable();
  
   showToast('تم تحميل البيانات المحفوظة', 'success');
 }
@@ -777,29 +774,45 @@ function addCustomPoints() {
 }
 
 function renderHistory(m) {
-  const el  = document.getElementById('pts-history');
-   const entries = (m.history || []).filter(h => {
-    const hd = new Date(h.ts || 0);
-    return hd >= currentPeriodStart && hd <= end;
-  });
+  const el = document.getElementById('pts-history');
+
+  const entries = m.history || [];
+
   if (!entries.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:0.78rem;padding:8px">لا يوجد سجل في هذه الفترة</div>';
+    el.innerHTML =
+      '<div style="color:var(--muted);font-size:0.78rem;padding:8px">لا يوجد سجل</div>';
     return;
   }
+
   el.innerHTML = entries.map(h => {
-    const d  = new Date(h.ts || 0);
-    const ds = d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-             + ' · '
-             + d.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
-    return `<div class="history-entry">
-      <span style="flex:1;font-weight:500;">${escHtml(h.label)}</span>
-      <span class="history-pts">+${h.pts}</span>
-      <span class="history-date">${ds}</span>
-      <div class="history-actions">
-        <button class="history-edit" onclick="editHistoryEntry('${h.id}')" title="تعديل">✏️</button>
-        <button class="history-del"  onclick="removeEntry('${h.id}')"      title="حذف">✕</button>
+    const d = new Date(h.ts || 0);
+
+    const ds =
+      d.toLocaleTimeString('ar-SA', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }) +
+      ' · ' +
+      d.toLocaleDateString('ar-SA', {
+        month: 'short',
+        day: 'numeric'
+      });
+
+    return `
+      <div class="history-entry">
+        <span style="flex:1;font-weight:500;">${escHtml(h.label)}</span>
+        <span class="history-pts">+${h.pts}</span>
+        <span class="history-date">${ds}</span>
+
+        <div class="history-actions">
+          <button class="history-edit"
+                  onclick="editHistoryEntry('${h.id}')">✏️</button>
+
+          <button class="history-del"
+                  onclick="removeEntry('${h.id}')">✕</button>
+        </div>
       </div>
-    </div>`;
+    `;
   }).join('');
 }
 
