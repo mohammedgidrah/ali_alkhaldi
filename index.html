@@ -662,14 +662,7 @@ function logout() {
   document.getElementById('login-err').style.display = 'none';
 }
 
-function saveData() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(members)
-  );
-
-  console.log('Saved:', members);
-}
+ 
 
 function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
@@ -706,15 +699,25 @@ function renderTable() {
 
   let list = members.map(m => {
     const { pts, dawriya, manawba } = getPeriodData(m);
-    return { ...m, _pts: pts, _d: dawriya, _m: manawba, _g: getGrade(pts) };
+    return {
+      ...m,
+      _pts: pts,
+      _d: dawriya,
+      _m: manawba,
+      _g: getGrade(pts)
+    };
   }).filter(m =>
     m.name.toLowerCase().includes(search) &&
     (!filterGrade || m._g === filterGrade)
   );
 
-  if      (sortBy === 'points-desc') list.sort((a, b) => b._pts - a._pts);
-  else if (sortBy === 'points-asc')  list.sort((a, b) => a._pts - b._pts);
-  else                               list.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  if (sortBy === 'points-desc') {
+    list.sort((a, b) => b._pts - a._pts);
+  } else if (sortBy === 'points-asc') {
+    list.sort((a, b) => a._pts - b._pts);
+  } else {
+    list.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  }
 
   const tbody = document.getElementById('table-body');
   const empty = document.getElementById('empty-state');
@@ -724,30 +727,38 @@ function renderTable() {
     empty.style.display = 'block';
   } else {
     empty.style.display = 'none';
+
     tbody.innerHTML = list.map((m, i) => `
       <tr>
         <td style="color:var(--muted)">${i + 1}</td>
         <td><strong>${escHtml(m.name)}</strong></td>
+
         <td><span class="count-badge">${m._d} × دورية</span></td>
         <td><span class="count-badge">${m._m} × مناوبة</span></td>
+
         <td>
-  <span class="count-badge">
-    ${m.violations || 0} مخالفة
+          <span class="count-badge">${m.violations || 0} مخالفة</span>
+        </td>
+
+        <td><span class="pts-badge">${m._pts} نقطة</span></td>
+        <td>
+  <span class="grade-badge grade-${m._g}">
+    ${m._g}
   </span>
 </td>
-        <td><span class="grade-badge grade-${m._g}">${m._g}</span></td>
+
         <td>
           <div class="action-btns">
-            <button class="btn-icon" title="تسجيل نشاط" onclick="openPointsModal('${m.id}')">⭐</button>
-            <button class="btn-icon" title="تعديل"       onclick="openEditModal('${m.id}')">✏️</button>
-            <button class="btn-icon btn-del" title="حذف" onclick="deleteMember('${m.id}')">🗑️</button>
-            <button class="btn-icon"
-        title="إضافة مخالفة"
-        onclick="addViolation('${m.id}')">⚠️</button>
+            <button class="btn-icon" onclick="openPointsModal('${m.id}')">⭐</button>
+            <button class="btn-icon" onclick="openEditModal('${m.id}')">✏️</button>
+            <button class="btn-icon btn-del" onclick="deleteMember('${m.id}')">🗑️</button>
+            <button class="btn-icon" onclick="addViolation('${m.id}')">⚠️</button>
           </div>
         </td>
-      </tr>`).join('');
+      </tr>
+    `).join('');
   }
+
   updateStats();
 }
 
