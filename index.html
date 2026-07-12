@@ -237,6 +237,8 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
 
 .pts-badge { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); color: var(--accent); padding: 3px 10px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; white-space: nowrap; }
 .count-badge { background: var(--surface2); border: 1px solid var(--border); padding: 3px 9px; border-radius: 20px; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+.viol-badge { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #f87171; padding: 3px 9px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.viol-badge:hover { border-color: var(--danger); background: rgba(239,68,68,0.15); }
 
 .action-btns { display: flex; gap: 5px; align-items: center; }
 .btn-icon {
@@ -390,6 +392,7 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
     <div class="header-title">🏆 لوحة النقاط</div>
     <div class="header-actions">
       <button class="btn btn-primary" onclick="openAddModal()">➕ إضافة عضو</button>
+      <button class="btn btn-outline" onclick="openReportModal()">🖨️ تقرير Discord</button>
       <button class="btn btn-outline" onclick="logout()" style="padding:9px 12px">🚪</button>
       <button class="btn"
         onclick="resetAllPoints()">
@@ -519,6 +522,21 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
   </div>
 </div>
 
+<!-- EDIT VIOLATIONS MODAL -->
+<div class="modal-bg" id="edit-violations-modal">
+  <div class="modal">
+    <h3 id="viol-modal-title">⚠️ تعديل عدد المخالفات</h3>
+    <div class="form-group">
+      <label class="form-label">عدد المخالفات</label>
+      <input type="number" class="form-input" id="viol-count" value="0" min="0" step="1">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('edit-violations-modal')">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveViolations()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
 <!-- DELETE CONFIRM -->
 <div class="modal-bg" id="delete-modal">
   <div class="modal confirm-modal">
@@ -564,6 +582,26 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
 
   </div>
 </div>
+
+<!-- DISCORD REPORT MODAL -->
+<div class="modal-bg" id="report-modal">
+  <div class="modal" style="max-width:640px">
+    <h3>🖨️ التقرير اليومي — Discord</h3>
+    <div class="form-group">
+      <label class="form-label">التاريخ</label>
+      <input type="date" class="form-input" id="report-date" onchange="generateReport()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">النص الجاهز للنسخ إلى Discord</label>
+      <textarea id="report-text" readonly style="width:100%;height:380px;direction:ltr;text-align:left;font-family:monospace;font-size:0.8rem;background:#0a0f1e;color:#e2e8f0;border:1px solid #1f2937;border-radius:8px;padding:10px;resize:vertical"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('report-modal')">إغلاق</button>
+      <button class="btn btn-primary" onclick="copyReport()">📋 نسخ النص</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const PASSWORD    = 'Lion';
 const STORAGE_KEY = 'dashboard_data_v5';
@@ -573,6 +611,7 @@ let editingId = null;
 let ptsTargetId = null;
 let deleteTargetId = null;
 let editingHistoryEntryId = null;
+let violationsTargetId = null;
 
 const DAWRIYAS = ['دورية خارجية'];
 const MANAWBAT = [
@@ -584,6 +623,16 @@ const SPECIAL_ACTION = {
   pts: 4
 };
 const DAY_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+// Discord emoji codes used in the report export
+const DISCORD_HEADER_LEFT  = '<a:120iq:1414768402882625546>';
+const DISCORD_HEADER_RIGHT = '<a:120iq:1414765714262331495>';
+const DISCORD_STAR         = '<a:star:1336484075275288697>';
+const DISCORD_VIOLATION    = '<a:wewewew:1479586086329254111>';
+const DISCORD_DIAMOND      = '<a:diamond:1364959436619251752>';
+const DISCORD_EVENT        = '<a:Event:1078386063573274754>';
+const DISCORD_WAITING      = '<a:Waiting_JANA:1357356376564961320>';
+const DISCORD_THANKS       = '<a:110iq:1368980557148586125>';
 
  
 
@@ -737,7 +786,7 @@ function renderTable() {
         <td><span class="count-badge">${m._m} × مناوبة</span></td>
 
         <td>
-          <span class="count-badge">${m.violations || 0} مخالفة</span>
+          <span class="viol-badge" title="اضغط لتعديل عدد المخالفات" onclick="openViolationsModal('${m.id}')">${m.violations || 0} مخالفة</span>
         </td>
 
         <td><span class="pts-badge">${m._pts} نقطة</span></td>
@@ -752,7 +801,7 @@ function renderTable() {
             <button class="btn-icon" onclick="openPointsModal('${m.id}')">⭐</button>
             <button class="btn-icon" onclick="openEditModal('${m.id}')">✏️</button>
             <button class="btn-icon btn-del" onclick="deleteMember('${m.id}')">🗑️</button>
-            <button class="btn-icon" onclick="addViolation('${m.id}')">⚠️</button>
+            <button class="btn-icon" title="إضافة مخالفة (+1)" onclick="addViolation('${m.id}')">⚠️</button>
           </div>
         </td>
       </tr>
@@ -990,6 +1039,28 @@ function addViolation(id) {
 
   showToast('تم تسجيل مخالفة ⚠️', 'error');
 }
+
+function openViolationsModal(id) {
+  const m = members.find(x => x.id === id);
+  if (!m) return;
+  violationsTargetId = id;
+  document.getElementById('viol-modal-title').textContent = `⚠️ تعديل عدد المخالفات — ${m.name}`;
+  document.getElementById('viol-count').value = m.violations || 0;
+  openModal('edit-violations-modal');
+}
+
+function saveViolations() {
+  const val = parseInt(document.getElementById('viol-count').value);
+  if (isNaN(val) || val < 0) { showToast('أدخل عدداً صحيحاً', 'error'); return; }
+  const m = members.find(x => x.id === violationsTargetId);
+  if (!m) return;
+  m.violations = val;
+  saveData();
+  renderTable();
+  closeModal('edit-violations-modal');
+  showToast('تم تعديل عدد المخالفات ✅', 'success');
+}
+
 function resetAllPoints() {
   openModal('reset-modal');
 }
@@ -1026,6 +1097,73 @@ function confirmReset() {
 
   showToast('تم تصفير النقاط والمخالفات بنجاح 🔄', 'success');
 }
+
+// ---------- DISCORD REPORT ----------
+
+function openReportModal() {
+  if (!members.length) { showToast('لا يوجد أعضاء لإنشاء التقرير', 'error'); return; }
+  const d = new Date();
+  const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  document.getElementById('report-date').value = iso;
+  generateReport();
+  openModal('report-modal');
+}
+
+function generateReport() {
+  const dateVal = document.getElementById('report-date').value;
+  let dateStr;
+  if (dateVal) {
+    const [y, mo, da] = dateVal.split('-');
+    dateStr = `${y}/${mo}/${da}`;
+  } else {
+    const d = new Date();
+    dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  const achievers = members
+    .map(m => ({ name: m.name, pts: getPeriodData(m).pts }))
+    .filter(m => m.pts > 0)
+    .sort((a, b) => b.pts - a.pts);
+
+  const totalViolations = members.reduce((s, m) => s + (m.violations || 0), 0);
+
+  const lines = [];
+  lines.push(`${DISCORD_HEADER_LEFT} التقرير اليومي لنقاط الاعضاء المنجزين${DISCORD_HEADER_RIGHT} `);
+  lines.push(`التاريخ: ${dateStr}`);
+  lines.push(`${DISCORD_STAR}  الأعضاء المنجزون`);
+  if (achievers.length) {
+    achievers.forEach(a => {
+      lines.push(`${DISCORD_STAR} ${a.name} ${DISCORD_HEADER_LEFT} (${a.pts})`);
+    });
+  } else {
+    lines.push('لا يوجد أعضاء منجزون لهذا اليوم');
+  }
+  lines.push('--------------------------------');
+  lines.push(`عدد المخالفات المسجلة: ${totalViolations} ${DISCORD_VIOLATION} `);
+  lines.push('--------------------------------');
+  lines.push(`\u200f${DISCORD_DIAMOND} النتيجة: `);
+  lines.push('الأعضاء المذكورين اعلاه أدّوا المهام المطلوبة بنجاح لهذا اليوم');
+  lines.push('--------------------------------');
+  lines.push(`${DISCORD_EVENT} ${DISCORD_WAITING} ملاحظة القائدة والنواب :`);
+  lines.push('نتقدم بخالص الشكر الجزيل والتقدير للاعضاء المنجزين للمهام لهذا اليوم باداء عالي ونامل ونتطلع منهم لتقديم اداء اعلى من سابقه واكثر من ذاك في الايام القادمة.');
+  lines.push(`${DISCORD_THANKS} يعطيكم العافية جميعاً ماقصرتو.  `);
+
+  document.getElementById('report-text').value = lines.join('\n');
+}
+
+async function copyReport() {
+  const text = document.getElementById('report-text').value;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('تم نسخ التقرير 📋', 'success');
+  } catch {
+    const ta = document.getElementById('report-text');
+    ta.select();
+    document.execCommand('copy');
+    showToast('تم نسخ التقرير 📋', 'success');
+  }
+}
+
 loadData();
 </script>
 </body>
