@@ -478,11 +478,16 @@ td { padding: 11px 14px; font-size: 0.88rem; vertical-align: middle; }
   <div class="modal">
     <h3 id="pts-modal-title">⭐ تسجيل نشاط</h3>
     <div class="cooldown-note">⏱️ <strong>فترة التهدئة بين الدوريات: ساعتان على الأقل</strong><br>✅ لا توجد فترة تهدئة لـ: مناوبة طابق 0 ومناوبة البوابة الأمامية</div>
-    <div class="section-title">الدوريات — +3 نقاط للدورية</div>
-    <div class="action-list" id="dawriya-list"></div>
-    <div class="section-title">المناوبات — +2 نقاط للمناوبة</div>
+      <div class="section-title">المناوبات  — +4 نقاط للمناوبة</div>
     <div class="action-list" id="manawba-list"></div>
-    <div class="section-title"> 4+ إجراءات خاصة</div>
+    <div class="section-title">الدوريات — +6 نقاط للدورية</div>
+    <div class="action-list" id="dawriya-list"></div>
+  
+    <div class="section-title">المخالفات — +7 نقاط للمخالفات</div>
+    <div class="action-list" id="manawba-list-7"></div>
+    <div class="section-title">دورية إنعاش — +9 نقاط للدوريه</div>
+    <div class="action-list" id="manawba-list-9"></div>
+    <!-- <div class="section-title"> 4+ إجراءات خاصة</div> -->
 <div class="action-list" id="special-action"></div>
     <div class="form-group">
       <label class="form-label">نقاط مخصصة إضافية</label>
@@ -615,13 +620,21 @@ let violationsTargetId = null;
 
 const DAWRIYAS = ['دورية خارجية'];
 const MANAWBAT = [
-  { label: 'مناوبة طابق 0', noCooldown: true, pts: 2 },
-  { label: 'مناوبة البوابة الأمامية', noCooldown: true, pts: 2 },
+  { label: 'مناوبة طابق 0', noCooldown: true, pts: 4 },
+  { label: 'مناوبة البوابة الأمامية', noCooldown: true, pts: 4 },
 ];
-const SPECIAL_ACTION = {
-  label: 'استخراج السيارات في طابق 0',
-  pts: 4
-};
+
+// +7 points shifts — rename/add items as needed
+const MANAWBAT_7 = [
+  { label: 'المخالفات', noCooldown: false, pts: 7 },
+];
+
+// +9 points shifts — rename/add items as needed
+const MANAWBAT_9 = [
+  { label: 'دورية إنعاش', noCooldown: false, pts: 9 },
+];
+
+ 
 const DAY_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
 // Discord emoji codes used in the report export
@@ -634,17 +647,6 @@ const DISCORD_EVENT        = '<a:Event:1078386063573274754>';
 const DISCORD_WAITING      = '<a:Waiting_JANA:1357356376564961320>';
 const DISCORD_THANKS       = '<a:110iq:1368980557148586125>';
 
- 
-
- 
-
- 
-
- 
- 
-
- 
- 
 function getPeriodData(member) {
   if (!member.history) {
     return { pts: 0, dawriya: 0, manawba: 0 };
@@ -710,8 +712,6 @@ function logout() {
   document.getElementById('pw-input').value = '';
   document.getElementById('login-err').style.display = 'none';
 }
-
- 
 
 function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
@@ -869,6 +869,20 @@ function confirmDelete() {
   showToast('تم حذف العضو', 'error');
 }
 
+// Generic renderer for shift lists that share the { label, noCooldown, pts } shape
+function renderManawbaList(containerId, items) {
+  document.getElementById(containerId).innerHTML = items.map(mn =>
+    `<div class="action-item"
+          onclick="addActivity('manawba', '${mn.label.replace(/'/g,"\\'")}', ${mn.pts})">
+       <span>
+         ${mn.label}
+         ${mn.noCooldown ? '<span class="no-cooldown-tag">بلا تهدئة</span>' : ''}
+       </span>
+       <span class="action-pts">+${mn.pts}</span>
+     </div>`
+  ).join('');
+}
+
 function openPointsModal(id) {
   const m = members.find(x => x.id === id);
   if (!m) return;
@@ -876,28 +890,16 @@ function openPointsModal(id) {
   document.getElementById('pts-modal-title').textContent = `⭐ تسجيل نشاط — ${m.name}`;
 
   document.getElementById('dawriya-list').innerHTML = DAWRIYAS.map(d =>
-    `<div class="action-item" onclick="addActivity('dawriya', '${d.replace(/'/g,"\\'")}', 3)">
-       <span>${d}</span><span class="action-pts">+3</span>
+    `<div class="action-item" onclick="addActivity('dawriya', '${d.replace(/'/g,"\\'")}', 6)">
+       <span>${d}</span><span class="action-pts">+6</span>
      </div>`
   ).join('');
 
-document.getElementById('manawba-list').innerHTML = MANAWBAT.map(mn =>
-  `<div class="action-item"
-        onclick="addActivity('manawba', '${mn.label.replace(/'/g,"\\'")}', ${mn.pts})">
-     <span>
-       ${mn.label}
-       ${mn.noCooldown ? '<span class="no-cooldown-tag">بلا تهدئة</span>' : ''}
-     </span>
-     <span class="action-pts">+${mn.pts}</span>
-   </div>`
-).join('');
-document.getElementById('special-action').innerHTML = `
-  <div class="action-item"
-       onclick="addActivity('manawba', '${SPECIAL_ACTION.label.replace(/'/g,"\\'")}', ${SPECIAL_ACTION.pts})">
-    <span>${SPECIAL_ACTION.label}</span>
-    <span class="action-pts">+${SPECIAL_ACTION.pts}</span>
-  </div>
-`;
+  renderManawbaList('manawba-list',   MANAWBAT);
+  renderManawbaList('manawba-list-7', MANAWBAT_7);
+  renderManawbaList('manawba-list-9', MANAWBAT_9);
+
+ 
   
 
   document.getElementById('custom-pts').value = '';
@@ -1064,26 +1066,6 @@ function saveViolations() {
 function resetAllPoints() {
   openModal('reset-modal');
 }
-// function resetAllPoints() {
-  
-//   const ok = confirm(
-//     '⚠️ تحذير!\n\nسيتم حذف جميع النقاط + المخالفات لجميع الأعضاء.\nلا يمكن التراجع عن هذه العملية.\n\nهل تريد المتابعة؟'
-//   );
-
-//   if (!ok) return;
-
-//   members.forEach(member => {
-//     member.history = [];
-
-//     // FORCE reset violations safely
-//     member.violations = 0;
-//   });
-
-//   saveData();
-//   renderTable();
-
-//   showToast('تم تصفير النقاط والمخالفات بنجاح 🔄', 'success');
-// }
 function confirmReset() {
   members.forEach(m => {
     m.history = [];
